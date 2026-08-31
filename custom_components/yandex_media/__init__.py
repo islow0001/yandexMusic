@@ -1,14 +1,18 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.const import Platform
+import logging
 
 from .const import DOMAIN
 
 PLATFORMS = [Platform.MEDIA_SOURCE]
 
+_LOGGER = logging.getLogger(__name__)
+
 async def async_setup(hass: HomeAssistant, config: dict):
-    """Set up integration from configuration.yaml (legacy)."""
-    hass.data.setdefault(DOMAIN, {})
+    """Set up Yandex Media integration."""
+    _LOGGER.error("=== YANDEX MEDIA: async_setup CALLED ===")  # <-- это будет видно в логах
+    hass.data[DOMAIN] = {}
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
