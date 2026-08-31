@@ -2,6 +2,7 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class YandexClient:
     """Demo client with 3 test tracks."""
 
