@@ -1,0 +1,1 @@
+DOMAIN = "yandex_media"
