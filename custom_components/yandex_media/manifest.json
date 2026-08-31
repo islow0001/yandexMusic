@@ -1,0 +1,9 @@
+{
+  "domain": "yandex_media",
+  "name": "Yandex Media",
+  "version": "1.0.0",
+  "requirements": [],
+  "dependencies": ["media_source"],
+  "codeowners": [],
+  "iot_class": "local_polling"
+}
