@@ -1,117 +1,92 @@
-import os
-import asyncio
+import logging
 from homeassistant.components.media_source import (
     BrowseMediaSource,
     MediaSource,
     MediaSourceItem,
     PlayMedia,
-    async_register_media_source,
+    Unresolvable,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import aiohttp_client
+from homeassistant.components.media_player import MediaClass, MediaType
 
-# Сюда импортируй свой класс, который качает mp3
 from .yandex_client import YandexClient
 
-async def async_setup_media_source(hass: HomeAssistant):
-    # Регистрируем источник с идентификатором "yandex"
-    async_register_media_source(hass, YandexMediaSource(hass))
+_LOGGER = logging.getLogger(__name__)
 
+async def async_get_media_source(hass: HomeAssistant):
+    """Set up Yandex Media source."""
+    _LOGGER.error("===== YANDEX MEDIA: async_get_media_source CALLED =====")
+    return YandexMediaSource(hass)
 
 class YandexMediaSource(MediaSource):
+    """Yandex Music media source."""
+
     def __init__(self, hass: HomeAssistant):
-        super().__init__("yandex")  # Это будет видно в URL: media-source://yandex/...
+        super().__init__("yandex_media")
         self.hass = hass
-        self.client = YandexClient()  # твой класс для скачивания
+        self.name = "Yandex Media"
+        self.client = YandexClient()
 
-    async def async_browse_media(self, item: MediaSourceItem) -> BrowseMediaSource:
-        """Возвращает структуру папок и файлов, которую видит HA."""
-        
-        # Корень (когда ты открываешь "Обзор медиа")
-        if not item.identifier:
-            return BrowseMediaSource(
-                domain=self.domain,
-                identifier="",
-                media_class="directory",
-                children_media_class="directory",
-                title="Яндекс Музыка",
-                can_play=False,
-                can_expand=True,
-                children=[
-                    BrowseMediaSource(
-                        domain=self.domain,
-                        identifier="playlist_loved",  # Это передается дальше
-                        media_class="directory",
-                        children_media_class="track",
-                        title="Моё любимое",
-                        can_play=False,
-                        can_expand=True,
-                    ),
-                    # можешь добавить другие плейлисты здесь
-                ],
-            )
+    async def async_browse_media(self, item: MediaSourceItem):
+        """Browse media."""
+        _LOGGER.error(f"===== YANDEX MEDIA: browse_media: {item.identifier} =====")
 
-        # Если выбрали плейлист "Моё любимое"
-        if item.identifier == "playlist_loved":
-            # Получаем список треков (у тебя уже есть код)
-            tracks = await self.hass.async_add_executor_job(self.client.get_loved_tracks)
-            # tracks = [{"title": "Track1", "artist": "Artist1", "url": "..."}, ...]
-
+        # Корень
+        if item.identifier is None or item.identifier == "":
             children = []
-            for i, track in enumerate(tracks):
+            
+            # Добавляем все треки из клиента
+            for track in self.client.get_tracks():
                 children.append(
                     BrowseMediaSource(
                         domain=self.domain,
-                        identifier=f"track_{i}",  # идентификатор трека
-                        media_class="track",
-                        children_media_class=None,
+                        identifier=f"track_{track['id']}",
+                        media_class=MediaClass.TRACK,
+                        media_content_type=MediaType.MUSIC,
                         title=f"{track['artist']} - {track['title']}",
-                        can_play=True,   # <--- МОЖНО ИГРАТЬ
+                        can_play=True,
                         can_expand=False,
-                        thumbnail=track.get("thumbnail"),  # если есть
+                        thumbnail=track.get("thumbnail"),
                     )
                 )
-            
+
             return BrowseMediaSource(
                 domain=self.domain,
-                identifier=item.identifier,
-                media_class="directory",
-                children_media_class="track",
-                title="Моё любимое",
+                identifier=None,
+                media_class=MediaClass.DIRECTORY,
+                media_content_type="",
+                children_media_class=MediaClass.TRACK,
+                title="Yandex Music (Demo)",
                 can_play=False,
                 can_expand=True,
                 children=children,
             )
 
-        # Если выбрали конкретный трек (нажали Play)
+        # Если выбран трек
         if item.identifier and item.identifier.startswith("track_"):
-            track_index = int(item.identifier.split("_")[1])
-            tracks = await self.hass.async_add_executor_job(self.client.get_loved_tracks)
-            track = tracks[track_index]
+            track_id = item.identifier.replace("track_", "")
+            track = self.client.get_track(track_id)
             
-            # СКАЧИВАЕМ MP3 В КЭШ
-            mp3_path = await self.hass.async_add_executor_job(
-                self.client.download_track, track["id"]
-            )
-            
-            # Возвращаем ссылку на файл
-            return PlayMedia(
-                url=f"/media/local/yandex_cache/{os.path.basename(mp3_path)}",
-                mime_type="audio/mpeg",
-            )
+            if track:
+                return PlayMedia(
+                    url=track["url"],
+                    mime_type="audio/mpeg",
+                )
 
-    async def async_resolve_media(self, item: MediaSourceItem) -> PlayMedia:
-        """Вызывается, когда HA пытается реально воспроизвести файл."""
-        # Здесь логика такая же, как в последнем if выше
-        track_index = int(item.identifier.split("_")[1])
-        tracks = await self.hass.async_add_executor_job(self.client.get_loved_tracks)
-        track = tracks[track_index]
+        return None
+
+    async def async_resolve_media(self, item: MediaSourceItem):
+        """Resolve media."""
+        _LOGGER.error(f"===== YANDEX MEDIA: resolve_media: {item.identifier} =====")
         
-        mp3_path = await self.hass.async_add_executor_job(
-            self.client.download_track, track["id"]
-        )
+        if item.identifier and item.identifier.startswith("track_"):
+            track_id = item.identifier.replace("track_", "")
+            track = self.client.get_track(track_id)
+            
+            if track:
+                return PlayMedia(
+                    url=track["url"],
+                    mime_type="audio/mpeg",
+                )
         
-        return PlayMedia(
-            url=f"/media/local/yandex_cache/{os.path.basename(mp3_path)}",
-            mime_type="audio/mpeg",
-        )
+        raise Unresolvable("Unknown item")

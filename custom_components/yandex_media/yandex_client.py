@@ -1,34 +1,46 @@
-import os
-import requests
+import logging
 
-CACHE_DIR = "/media/local/yandex_cache/"
+_LOGGER = logging.getLogger(__name__)
 
 class YandexClient:
-    def __init__(self):
-        self._tracks_cache = None
-        # тут твоя авторизация
+    """Demo client with 3 test tracks."""
 
-    def get_loved_tracks(self):
-        """Возвращает список словарей с id, title, artist"""
-        # Твой код, который парсит плейлист
-        # Возвращай типа:
-        return [
-            {"id": "123", "title": "Track1", "artist": "Artist1"},
-            {"id": "456", "title": "Track2", "artist": "Artist2"},
+    def __init__(self):
+        self._tracks = [
+            {
+                "id": "1",
+                "title": "SoundHelix Song 1",
+                "artist": "SoundHelix",
+                "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+                "thumbnail": "https://www.soundhelix.com/examples/mp3/logo.png",
+                "duration": 20,
+            },
+            {
+                "id": "2",
+                "title": "SoundHelix Song 2",
+                "artist": "SoundHelix",
+                "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+                "thumbnail": "https://www.soundhelix.com/examples/mp3/logo.png",
+                "duration": 20,
+            },
+            {
+                "id": "3",
+                "title": "SoundHelix Song 3",
+                "artist": "SoundHelix",
+                "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+                "thumbnail": "https://www.soundhelix.com/examples/mp3/logo.png",
+                "duration": 20,
+            },
         ]
 
-    def download_track(self, track_id):
-        """Скачивает mp3 и возвращает путь к файлу"""
-        os.makedirs(CACHE_DIR, exist_ok=True)
-        filepath = os.path.join(CACHE_DIR, f"{track_id}.mp3")
-        
-        if os.path.exists(filepath):
-            return filepath  # уже скачан
-        
-        # Твой код скачивания
-        url = f"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"  # получаешь ссылку на mp3
-        response = requests.get(url)
-        with open(filepath, "wb") as f:
-            f.write(response.content)
-        
-        return filepath
+    def get_tracks(self):
+        """Return list of tracks."""
+        _LOGGER.error(f"===== YANDEX CLIENT: returning {len(self._tracks)} tracks =====")
+        return self._tracks
+
+    def get_track(self, track_id):
+        """Return track by ID."""
+        for track in self._tracks:
+            if track["id"] == track_id:
+                return track
+        return None
